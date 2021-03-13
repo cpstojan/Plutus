@@ -4,13 +4,18 @@ import cbpro
 import time
 import math
 import pandas as pd
+import os
 
 
 def main():
     public_client = cbpro.PublicClient()
 
+    # Get the current working directory for print statement
+    path = os.getcwd()
+
     historical_ob = pd.DataFrame(columns=['Time', 'Bids', 'Asks'])
 
+    # ToDo: add try catch incase of disconnect send email
     while True:
         cur_time = math.floor(time.time())
         if cur_time % 10 == 0:
@@ -21,9 +26,11 @@ def main():
             historical_ob.loc[len(historical_ob)] = [cur_time, ob['bids'], ob['asks']]
 
             # Every hour collected data is flushed to a csv, cleared, and continued
-            if cur_time % 3600 == 0:
-                # historical_ob.to_csv()
-                print(historical_ob)
+            if cur_time % 60 == 0:
+                file_name = str(cur_time) + '.csv'
+                historical_ob.to_csv(file_name, index=False)
+                # ToDo: Save to Google Drive
+                print('File:', cur_time, 'saved in', path)
                 historical_ob.drop(historical_ob.index, inplace=True)
 
             # Ensures only 1 call every 10 seconds - additionally that calls are evenly
