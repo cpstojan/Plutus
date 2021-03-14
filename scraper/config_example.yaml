@@ -1,3 +1,4 @@
 email: 'sending_email@gmail.com'
 password: 'password'
 to: 'receiving_email@gmail.com'
+hostname: 'Computer-Name'

@@ -16,7 +16,7 @@ import ssl
 from email.mime.multipart import MIMEMultipart
 
 
-def email_notification():
+def email_notification(email_subject):
     with open('config.yaml') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
 
@@ -26,7 +26,7 @@ def email_notification():
     msg = MIMEMultipart()
     msg['From'] = config['email']
     msg['To'] = config['to']
-    msg['Subject'] = 'DISCONNECT DETECTED'
+    msg['Subject'] = config['hostname'] + ': ' + email_subject
 
     # Create a secure SSL context
     context = ssl.create_default_context()
@@ -36,6 +36,10 @@ def email_notification():
 
 
 def scraper(security='BTC-USD', request_time=10, dump_time=3600, send_email=True):
+    # BASH script should automatically restart upon any failures
+    # Therefore we send an email on reconnect and disconnect
+    email_notification('RECONNECT DETECTED')
+
     public_client = cbpro.PublicClient()
 
     # Get the current working directory for print statement
@@ -67,10 +71,17 @@ def scraper(security='BTC-USD', request_time=10, dump_time=3600, send_email=True
                 # of first call
                 time.sleep(1)
         except:
+            print('Error hit')
             if send_email:
-                print('Error hit - sending email to restart')
-                email_notification()
-                return
+                print('Sending email to restart')
+                email_notification('DISCONNECT DETECTED')
+
+            print('Saving partial historical order book')
+            file_name = str(cur_time) + '.csv'
+            historical_ob.to_csv(file_name, index=False)
+            print('File:', cur_time, 'saved in', path)
+
+            return -1
 
 
 def main():
