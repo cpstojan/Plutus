@@ -48,6 +48,7 @@ def scraper(security='BTC-USD', request_time=10, dump_time=3600, send_email=True
     historical_ob = pd.DataFrame(columns=['Time', 'Bids', 'Asks'])
 
     while True:
+        time.sleep(0.5)
         try:
             cur_time = math.floor(time.time())
             if cur_time % request_time == 0:
