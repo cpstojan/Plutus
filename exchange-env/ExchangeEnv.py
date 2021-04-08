@@ -29,7 +29,7 @@ class ExchangeEnv(gym.Env, ABC):
         self.cash = cash
         self.security = security
 
-        self.step = 0
+        self.time_step = 0
 
         # Actions take the form of a pair (Action, Percentage)
         #   Action: buy -> 0, sell -> 1, hold -> 2
@@ -46,6 +46,13 @@ class ExchangeEnv(gym.Env, ABC):
                                             shape=(4, 3), dtype=np.float32)
 
         self.__data_loader(directory)
+
+        # Used for calculating when we are done going through data
+        self.final_step = len(self.data) - 1
+
+        # Original values are saved for a reset
+        self.starting_cash = cash
+        self.starting_security = security
 
     def __data_loader(self, directory):
         """
@@ -70,7 +77,7 @@ class ExchangeEnv(gym.Env, ABC):
         self.data = data
 
     def __next_observation(self):
-        current_step = self.data.iloc[self.step]
+        current_step = self.data.iloc[self.time_step]
         current_bids = [list(map(float, i)) for i in literal_eval(current_step['Bids'])]
         current_asks = [list(map(float, i)) for i in literal_eval(current_step['Asks'])]
 
@@ -87,23 +94,23 @@ class ExchangeEnv(gym.Env, ABC):
 
         if len(self.historical_obs) < 2:
             frame = np.array([
-                np.array(self.historical_obs[self.step]),
+                np.array(self.historical_obs[self.time_step]),
                 np.zeros([3]),
                 np.zeros([3]),
                 np.zeros([3])
             ])
         elif len(self.historical_obs) < 10:
             frame = np.array([
-                self.historical_obs[self.step],
-                self.historical_obs[self.step - 1],
+                self.historical_obs[self.time_step],
+                self.historical_obs[self.time_step - 1],
                 np.zeros([3]),
                 np.zeros([3])
             ])
         elif len(self.historical_obs) < 100:
             frame = np.array([
-                self.historical_obs[self.step],
-                self.historical_obs[self.step - 1],
-                self.historical_obs[self.step - 10],
+                self.historical_obs[self.time_step],
+                self.historical_obs[self.time_step - 1],
+                self.historical_obs[self.time_step - 10],
                 np.zeros([3])
             ])
         else:
@@ -116,8 +123,8 @@ class ExchangeEnv(gym.Env, ABC):
 
         return frame
 
-    def clearing_house(self, cash_amount=0, security_amount=0):
-        current_step = self.data.iloc[self.step]
+    def ___clearing_house(self, cash_amount=0, security_amount=0):
+        current_step = self.data.iloc[self.time_step]
 
         cash_gained = 0
         security_gained = 0
@@ -150,6 +157,16 @@ class ExchangeEnv(gym.Env, ABC):
             current_bids.sort(key=lambda x: x[0], reverse=True)
             print(current_bids)
 
+            depth = 0
+            while security_amount > 0:
+                if security_amount > current_bids[depth][1]:
+                    cash_gained += current_bids[depth][0] * current_bids[depth][1]
+                    security_amount -= current_bids[depth][1]
+                    depth += 1
+                else:
+                    cash_gained += security_amount * current_bids[depth][0]
+                    security_amount = 0
+
         return cash_gained, security_gained
 
     def __take_action(self, action):
@@ -160,21 +177,52 @@ class ExchangeEnv(gym.Env, ABC):
         if order < 1:
             # Cash value of order is cash on hand * percent
             cash_amount = self.cash * percent
-            self.__clearing_house(cash_amount=cash_amount)
+            _, security_gained = self.__clearing_house(cash_amount=cash_amount)
 
+            # Buy trade has cleared so we subtract cash and add security
+            self.cash -= cash_amount
+            self.security += security_gained
+
+        # if action_type < 2 then it is of type sell
         elif order < 2:
             # Sell amount % of shares held
             security_amount = self.security * percent
-            self.__clearing_house(security_amount=security_amount)
+            cash_gained, _ = self.__clearing_house(security_amount=security_amount)
 
-        self.net_worth = self.balance + self.shares_held * current_price
+            # Sell trade has cleared so we add cash and subtract security
+            self.cash += cash_gained
+            self.security -= security_amount
 
-        if self.net_worth > self.max_net_worth:
-            self.max_net_worth = self.net_worth
+    def step(self, action):
+        # Take an action
+        self.__take_action(action)
 
-        if self.shares_held == 0:
-            self.cost_basis = 0
+        # Move forward in time
+        self.time_step += 1
+
+        # Receive reward
+        # Reward is cash on hand + cash value of security held
+        cash_gained, _ = self.___clearing_house(security_amount=self.security)
+        reward = self.cash + cash_gained
+
+        done = self.final_step == self.time_step
+
+        obs = self.__next_observation()
+
+        return obs, reward, done, {}
+
+    def reset(self):
+        # Bringing the state of the environment back to initial state
+        self.cash = self.starting_cash
+        self.security = self.starting_security
+        self.historical_obs = []
+
+        # ToDO: should reset go back to time_step 0 or random step
+        self.time_step = 0
+
+        # This will act as the first observation
+        return self.__next_observation()
 
 
 env = ExchangeEnv(r"C:\Users\chris\OneDrive\Documents\GitHub\Plutus\data", 0, 0)
-print(env.clearing_house(cash_amount=2500))
+
