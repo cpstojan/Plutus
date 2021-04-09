@@ -35,7 +35,7 @@ class ExchangeEnv(gym.Env, ABC):
         #   Action: buy -> 0, sell -> 1, hold -> 2
         #   Percentage: percentage of holding (if action is hold this is ignored)
         self.action_space = spaces.Box(low=np.array([np.float32(0), np.float32(0)]),
-                                       high=np.array([np.float32(2), np.float32(1)]), dtype=np.float32)
+                                       high=np.array([np.float32(3), np.float32(1)]), dtype=np.float32)
 
         # Observation space is a triple containing
         #   Highest bid
@@ -86,8 +86,7 @@ class ExchangeEnv(gym.Env, ABC):
 
         sum_bid = sum([bid[1] for bid in current_bids])
         sum_ask = sum([ask[1] for ask in current_asks])
-        print("Sum of bids is", sum_bid)
-        print("Sum of asks is", sum_ask)
+
         tv_imbal = (sum_ask - sum_bid) / (sum_ask + sum_bid)
 
         self.historical_obs.append([max_bid, min_ask, tv_imbal])
@@ -115,15 +114,15 @@ class ExchangeEnv(gym.Env, ABC):
             ])
         else:
             frame = np.array([
-                self.historical_obs[current_step],
-                self.historical_obs[current_step - 1],
-                self.historical_obs[current_step - 10],
-                self.historical_obs[current_step - 100],
+                self.historical_obs[self.time_step],
+                self.historical_obs[self.time_step - 1],
+                self.historical_obs[self.time_step - 10],
+                self.historical_obs[self.time_step - 100],
             ])
 
         return frame
 
-    def ___clearing_house(self, cash_amount=0, security_amount=0):
+    def __clearing_house(self, cash_amount=0, security_amount=0):
         current_step = self.data.iloc[self.time_step]
 
         cash_gained = 0
@@ -134,7 +133,6 @@ class ExchangeEnv(gym.Env, ABC):
             # We want the lowest ask first
             current_asks = [list(map(float, i)) for i in literal_eval(current_step['Asks'])]
             current_asks.sort(key=lambda x: x[0])
-            print(current_asks)
 
             depth = 0
             while cash_amount > 0:
@@ -155,7 +153,6 @@ class ExchangeEnv(gym.Env, ABC):
             # We want the highest bid first
             current_bids = [list(map(float, i)) for i in literal_eval(current_step['Bids'])]
             current_bids.sort(key=lambda x: x[0], reverse=True)
-            print(current_bids)
 
             depth = 0
             while security_amount > 0:
@@ -193,6 +190,9 @@ class ExchangeEnv(gym.Env, ABC):
             self.cash += cash_gained
             self.security -= security_amount
 
+        # if action_type > 2 then it is of type hold
+        # nothing needs to happen in this case
+
     def step(self, action):
         # Take an action
         self.__take_action(action)
@@ -202,7 +202,7 @@ class ExchangeEnv(gym.Env, ABC):
 
         # Receive reward
         # Reward is cash on hand + cash value of security held
-        cash_gained, _ = self.___clearing_house(security_amount=self.security)
+        cash_gained, _ = self.__clearing_house(security_amount=self.security)
         reward = self.cash + cash_gained
 
         done = self.final_step == self.time_step
@@ -223,6 +223,19 @@ class ExchangeEnv(gym.Env, ABC):
         # This will act as the first observation
         return self.__next_observation()
 
+    def render(self, mode='human'):
+        # Render the environment to the screen
+        print(f'Time step: {self.time_step}')
+        print(f'Cash held: {self.cash}')
+        print(f'Security held: {self.security}')
 
-env = ExchangeEnv(r"C:\Users\chris\OneDrive\Documents\GitHub\Plutus\data", 0, 0)
+        cash_gained, _ = self.__clearing_house(security_amount=self.security)
+        net_worth = self.cash + cash_gained
+
+        print(f'Final account balance: {net_worth}')
+
+
+
+
+
 
