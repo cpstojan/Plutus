@@ -16,7 +16,7 @@ class ExchangeEnv(gym.Env, ABC):
     using level 2/3 data (depth of order book)
     """
 
-    def __init__(self, directory, cash, security):
+    def __init__(self, directory, cash, security, debug=False):
         super().__init__()
 
         # Historical data is loaded here
@@ -53,6 +53,9 @@ class ExchangeEnv(gym.Env, ABC):
         # Original values are saved for a reset
         self.starting_cash = cash
         self.starting_security = security
+
+        # Enables additional print statements
+        self.debug = debug
 
     def __data_loader(self, directory):
         """
@@ -195,7 +198,14 @@ class ExchangeEnv(gym.Env, ABC):
 
     def step(self, action):
         # Take an action
+        if self.debug:
+            print(f'Cash before: {self.cash}')
+
         self.__take_action(action)
+
+        if self.debug:
+            print(f'Action taken was {action}')
+            print(f'Cash after: {self.cash}')
 
         # Move forward in time
         self.time_step += 1
@@ -204,6 +214,9 @@ class ExchangeEnv(gym.Env, ABC):
         # Reward is cash on hand + cash value of security held
         cash_gained, _ = self.__clearing_house(security_amount=self.security)
         reward = self.cash + cash_gained
+
+        if self.debug:
+            print(f'Reward was {reward}')
 
         done = self.final_step == self.time_step
 
@@ -233,9 +246,3 @@ class ExchangeEnv(gym.Env, ABC):
         net_worth = self.cash + cash_gained
 
         print(f'Final account balance: {net_worth}')
-
-
-
-
-
-
