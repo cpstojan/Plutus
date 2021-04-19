@@ -54,6 +54,13 @@ class ExchangeEnv(gym.Env, ABC):
         self.starting_cash = cash
         self.starting_security = security
 
+        # Logging to allow user to see behavior of agent
+        # This will be in the form of tuples:
+        #   tuple[0] - action
+        #   tuple[1] - portfolio value
+        #   tuple[2] - [highest bid, lowest ask, TV-IMBAL
+        self.historical_behaviour = []
+
         # Enables additional print statements
         self.debug = debug
 
@@ -222,6 +229,8 @@ class ExchangeEnv(gym.Env, ABC):
 
         obs = self.__next_observation()
 
+        self.historical_behaviour.append([action, reward, obs[0]])
+
         return obs, reward, done, {}
 
     def reset(self):
@@ -229,6 +238,7 @@ class ExchangeEnv(gym.Env, ABC):
         self.cash = self.starting_cash
         self.security = self.starting_security
         self.historical_obs = []
+        self.historical_behaviour = []
 
         # ToDO: should reset go back to time_step 0 or random step
         self.time_step = 0
@@ -246,3 +256,6 @@ class ExchangeEnv(gym.Env, ABC):
         net_worth = self.cash + cash_gained
 
         print(f'Final account balance: {net_worth}')
+
+    def historical(self):
+        return self.historical_behaviour

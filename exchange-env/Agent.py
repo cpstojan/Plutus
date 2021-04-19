@@ -11,7 +11,7 @@ env = DummyVecEnv([lambda: ExchangeEnv.ExchangeEnv(r"C:\Users\chris\Downloads\dr
 
 # model = PPO2(MlpPolicy, env, verbose=1)
 model = TRPO(MlpPolicy, env, verbose=1)
-model.learn(total_timesteps=12500000)
+model.learn(total_timesteps=50000)
 
 obs = env.reset()
 done = False
@@ -21,3 +21,5 @@ while not done:
     print(action)
     obs, rewards, done, info = env.step(action)
     env.render()
+
+print(env.env_method("historical"))
