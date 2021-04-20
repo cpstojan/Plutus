@@ -56,7 +56,7 @@ class ExchangeEnv(gym.Env, ABC):
 
         # Logging to allow user to see behavior of agent
         # This will be in the form of tuples:
-        #   tuple[0] - action
+        #   tuple[0] - [action, percentage]
         #   tuple[1] - portfolio value
         #   tuple[2] - [highest bid, lowest ask, TV-IMBAL
         self.historical_behaviour = []
