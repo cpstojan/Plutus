@@ -47,13 +47,13 @@ def test(test_data, model_location):
         price_history.append(obs[0][0][0])
 
         # Appending current portfolio value
-        portfolio_value.append(rewards)
+        portfolio_value.append(rewards[0])
 
-    with open("price_history.csv", "wb") as f:
+    with open("price_history.txt", "w") as f:
         writer = csv.writer(f)
         writer.writerow(price_history)
 
-    with open("portfolio_value.csv", "wb") as f:
+    with open("portfolio_value.txt", "w") as f:
         writer = csv.writer(f)
         writer.writerow(portfolio_value)
 
